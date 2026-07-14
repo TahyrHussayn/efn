@@ -1,0 +1,40 @@
+# dependencies — reinstalled in the container
+node_modules
+
+# build output — rebuilt in the container
+.next
+out
+build
+dist
+
+# version control
+.git
+.gitignore
+
+# environment files — should be injected at runtime, not baked in
+.env*
+
+# editor / OS junk
+.DS_Store
+*.pem
+.vscode
+.idea
+
+# debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# vercel
+.vercel
+
+# docker (prevent recursive context)
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# misc
+README.md
+*.tsbuildinfo
+next-env.d.ts

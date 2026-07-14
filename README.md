@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# efn
+
+A [Next.js 16](https://nextjs.org) application built with React 19, TypeScript, and Tailwind CSS v4.
+
+## Tech Stack
+
+- **Framework** — Next.js 16 (App Router)
+- **UI** — React 19 + React Compiler
+- **Language** — TypeScript 5
+- **Styling** — Tailwind CSS v4
+- **Linting** — Biome
+- **Package Manager** — pnpm
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+# Install dependencies
+pnpm install
+
+# Start the development server
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) to view the app.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Docker
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The project ships with a production-optimized, multi-stage [Dockerfile](./Dockerfile).
 
-## Learn More
+```bash
+# Build the image
+docker build -t efn .
 
-To learn more about Next.js, take a look at the following resources:
+# Run the container
+docker run -p 3000:3000 efn
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Project Structure
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+src/
+└── app/
+    ├── globals.css    # Tailwind imports + CSS custom properties
+    ├── layout.tsx     # Root layout (fonts, metadata)
+    └── page.tsx       # Home page
+```
 
-## Deploy on Vercel
+## Scripts
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Command | Description |
+| --- | --- |
+| `pnpm dev` | Start development server |
+| `pnpm build` | Create production build |
+| `pnpm start` | Run production server |
+| `pnpm lint` | Lint with Biome |
+| `pnpm format` | Format with Biome |
