@@ -3,7 +3,7 @@
 # ──────────────────────────────────────────────
 # Stage 1 — Base: shared Alpine + libc6-compat
 # ──────────────────────────────────────────────
-FROM node:22-alpine AS production
+FROM node:22-alpine AS base
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
@@ -12,8 +12,8 @@ WORKDIR /app
 # ──────────────────────────────────────────────
 FROM base AS deps
 
-# Enable pnpm via corepack (ships with Node 22)
-RUN corepack enable pnpm
+# Install pnpm directly (corepack is being removed from Node 25+)
+RUN npm install -g pnpm
 
 # Copy only the files pnpm needs to resolve + install
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -34,7 +34,7 @@ COPY . .
 # Disable Next.js telemetry during build
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN corepack enable pnpm && pnpm run build
+RUN npm install -g pnpm && pnpm run build
 
 # ──────────────────────────────────────────────
 # Stage 4 — Runner: minimal production image
