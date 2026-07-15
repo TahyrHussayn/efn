@@ -14,6 +14,10 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: 2G
     networks:
       - web
 
@@ -40,9 +44,39 @@ services:
     networks:
       - web
 
+  # ── Netdata monitoring system (real-time resource metrics) ──
+  netdata:
+    image: netdata/netdata:stable
+    restart: unless-stopped
+    hostname: efn-monitor
+    cap_add:
+      - SYS_PTRACE
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - netdata_lib:/var/lib/netdata
+      - netdata_cache:/var/cache/netdata
+      - /:/host/root:ro,rslave
+      - /etc/passwd:/host/etc/passwd:ro
+      - /etc/group:/host/etc/group:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /etc/os-release:/host/etc/os-release:ro
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - web
+
 volumes:
   caddy_data:
   caddy_config:
+  netdata_lib:
+  netdata_cache:
 
 networks:
   web:

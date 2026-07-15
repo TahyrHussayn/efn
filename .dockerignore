@@ -38,3 +38,8 @@ docker-compose*.yml
 README.md
 *.tsbuildinfo
 next-env.d.ts
+
+# deployment configuration
+terraform/
+infra/
+

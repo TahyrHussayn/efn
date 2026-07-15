@@ -19,3 +19,15 @@ efn.tahyrhussayn.online {
 	reverse_proxy app:3000
 	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key
 }
+
+monitor.efn.tahyrhussayn.online {
+	# Enable compression
+	encode zstd gzip
+
+	# Basic Auth protection for monitoring panel
+	basic_auth {
+		tahirhussain5112 $2a$14$jKyEvo3TnSUWBjZkKZSaNeNPBpvgr/PkvImKleNpyKoHE3EEgh5Oq
+	}
+
+	reverse_proxy netdata:19999
+}

@@ -44,6 +44,9 @@ jobs:
       - name: Lint check
         run: pnpm lint
 
+      - name: Type check
+        run: pnpm exec tsc --noEmit
+
   # ─────────────────────────────────────────────
   # Job 2 — Build image and push to GHCR
   # ─────────────────────────────────────────────

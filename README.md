@@ -56,3 +56,16 @@ git commit -m "Initialize Zero-Variables Deployment"
 git push origin main
 ```
 The pipeline will automatically lint your code, build the standalone Docker image, push it to GHCR, install Docker on the server (if missing), write Caddy proxy configurations and SSL certs, and start the app.
+
+---
+
+## Real-Time Monitoring Dashboard
+
+A system-wide **Netdata** monitoring panel is deployed directly inside the container stack.
+
+*   **URL:** `https://monitor.efn.tahyrhussayn.online`
+*   **Username:** `tahirhussain5112`
+*   **Password:** `tahirthegoat`
+
+It displays real-time CPU, memory, network interfaces, disk read/writes, and individual Docker container resource footprints. It is secured behind Caddy Basic Auth using bcrypt hashing.
+
