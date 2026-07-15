@@ -61,11 +61,17 @@ The pipeline will automatically lint your code, build the standalone Docker imag
 
 ## Real-Time Monitoring Dashboard
 
-A system-wide **Netdata** monitoring panel is deployed directly inside the container stack.
+A system-wide **Beszel** monitoring panel is deployed directly inside the container stack.
 
 *   **URL:** `https://efn.tahyrhussayn.online/monitor/`
-*   **Username:** `tahirhussain5112`
-*   **Password:** `tahirthegoat`
 
-It displays real-time CPU, memory, network interfaces, disk read/writes, and individual Docker container resource footprints. It is secured behind Caddy Basic Auth using bcrypt hashing.
+On your first visit, you will be prompted to create your admin username and password. 
+
+### Registering the server in Beszel:
+1. Log in to the Beszel dashboard.
+2. Click **Add System**.
+3. Set **Name** to `efn-server`.
+4. Set **Host / IP** to `/beszel_socket/beszel.sock` (this connects to the local agent socket).
+5. Click **Add**. The dashboard will instantly start displaying your CPU, RAM, Network, and individual Docker container statistics.
+
 

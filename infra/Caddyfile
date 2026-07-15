@@ -21,10 +21,7 @@ efn.tahyrhussayn.online {
 
 	# Secure the monitoring path
 	handle_path /monitor/* {
-		basic_auth {
-			tahirhussain5112 $2a$14$jKyEvo3TnSUWBjZkKZSaNeNPBpvgr/PkvImKleNpyKoHE3EEgh5Oq
-		}
-		reverse_proxy netdata:19999
+		reverse_proxy beszel:8090
 	}
 
 	reverse_proxy app:3000

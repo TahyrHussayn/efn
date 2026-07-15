@@ -44,26 +44,13 @@ services:
     networks:
       - web
 
-  # ── Netdata monitoring system (real-time resource metrics) ──
-  netdata:
-    image: netdata/netdata:stable
+  # ── Beszel Hub: Web Dashboard (modern, Vercel-style UI) ──
+  beszel:
+    image: henrygd/beszel:latest
     restart: unless-stopped
-    hostname: efn-monitor
-    cap_add:
-      - SYS_PTRACE
-      - SYS_ADMIN
-    security_opt:
-      - apparmor:unconfined
     volumes:
-      - netdata_lib:/var/lib/netdata
-      - netdata_cache:/var/cache/netdata
-      - /:/host/root:ro,rslave
-      - /etc/passwd:/host/etc/passwd:ro
-      - /etc/group:/host/etc/group:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /etc/os-release:/host/etc/os-release:ro
+      - beszel_data:/beszel_data
+      - beszel_socket:/beszel_socket
     logging:
       driver: "json-file"
       options:
@@ -72,11 +59,27 @@ services:
     networks:
       - web
 
+  # ── Beszel Agent: Local metrics collector ──
+  beszel-agent:
+    image: henrygd/beszel-agent:latest
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - beszel_socket:/beszel_socket
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      LISTEN: /beszel_socket/beszel.sock
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 volumes:
   caddy_data:
   caddy_config:
-  netdata_lib:
-  netdata_cache:
+  beszel_data:
+  beszel_socket:
 
 networks:
   web:
