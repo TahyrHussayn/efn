@@ -20,6 +20,6 @@ efn.tahyrhussayn.online {
 	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key
 }
 
-monitor.tahyrhussayn.online {
+monitor-efn.tahyrhussayn.online {
 	reverse_proxy beszel:8090
 }
