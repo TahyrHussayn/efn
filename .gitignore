@@ -8,8 +8,9 @@ out/
 # production
 build
 
-# env files (inject via Dokploy at runtime)
+# env files (inject at runtime, never commit)
 .env*
+infra/certs/
 
 # debug
 .pnpm-debug.log*

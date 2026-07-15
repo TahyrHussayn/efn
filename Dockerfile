@@ -34,7 +34,8 @@ COPY . .
 # Disable Next.js telemetry during build
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN npm install -g pnpm && pnpm run build
+RUN --mount=type=cache,target=/app/.next/cache \
+    npm install -g pnpm && pnpm run build
 
 # ──────────────────────────────────────────────
 # Stage 4 — Runner: minimal production image

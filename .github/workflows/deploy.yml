@@ -1,0 +1,164 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: true
+
+permissions:
+  id-token: write
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Job 1 — Lint & Format Verification (Fast Fail)
+  # ─────────────────────────────────────────────
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint check
+        run: pnpm lint
+
+  # ─────────────────────────────────────────────
+  # Job 2 — Build image and push to GHCR
+  # ─────────────────────────────────────────────
+  build:
+    runs-on: ubuntu-latest
+    needs: lint
+
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix=
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ─────────────────────────────────────────────
+  # Job 3 — Deploy to EC2 via SSM
+  # ─────────────────────────────────────────────
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Prepare configs and certs (Base64)
+        id: prep
+        run: |
+          # Encode files to base64 to prevent shell escaping/syntax issues during SSM delivery
+          echo "COMPOSE_B64=$(base64 -w 0 infra/docker-compose.yml)" >> $GITHUB_ENV
+          echo "CADDYFILE_B64=$(base64 -w 0 infra/Caddyfile)" >> $GITHUB_ENV
+          echo "CERT_B64=$(echo "${{ secrets.CLOUDFLARE_CERT }}" | base64 -w 0)" >> $GITHUB_ENV
+          echo "KEY_B64=$(echo "${{ secrets.CLOUDFLARE_KEY }}" | base64 -w 0)" >> $GITHUB_ENV
+
+      - name: Deploy via SSM
+        run: |
+          # The script automatically installs Docker if missing, creates directories, writes configs/certs, and boots
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "${{ vars.EC2_INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --parameters "commands=[
+              \"if ! command -v docker &> /dev/null; then echo \\\"Docker not found. Installing Docker...\\\" && export DEBIAN_FRONTEND=noninteractive && apt-get update && apt-get install -y curl && curl -fsSL https://get.docker.com | sh; fi\",
+              \"mkdir -p /home/ubuntu/infra/certs\",
+              \"echo '${{ env.COMPOSE_B64 }}' | base64 -d > /home/ubuntu/infra/docker-compose.yml\",
+              \"echo '${{ env.CADDYFILE_B64 }}' | base64 -d > /home/ubuntu/infra/Caddyfile\",
+              \"echo '${{ env.CERT_B64 }}' | base64 -d > /home/ubuntu/infra/certs/origin.pem\",
+              \"echo '${{ env.KEY_B64 }}' | base64 -d > /home/ubuntu/infra/certs/origin.key\",
+              \"cd /home/ubuntu/infra\",
+              \"docker compose pull app\",
+              \"docker compose up -d\",
+              \"docker image prune -af\",
+              \"echo \\\"Waiting for app to report healthy...\\\"\",
+              \"for i in {1..12}; do if docker compose ps app | grep -q \\\"(healthy)\\\"; then echo \\\"App is healthy!\\\" && exit 0; fi; echo \\\"Waiting...\\\" && sleep 5; done\",
+              \"echo \\\"App failed health check!\\\" && exit 1\"
+            ]" \
+            --query "Command.CommandId" \
+            --output text)
+
+          echo "SSM Command ID: $COMMAND_ID"
+
+          # Wait for the command to complete (up to 120s)
+          aws ssm wait command-executed \
+            --command-id "$COMMAND_ID" \
+            --instance-id "${{ vars.EC2_INSTANCE_ID }}" \
+            || true
+
+          # Fetch and display result
+          RESULT=$(aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "${{ vars.EC2_INSTANCE_ID }}")
+
+          STATUS=$(echo "$RESULT" | jq -r '.Status')
+          echo "Command status: $STATUS"
+          echo "--- STDOUT ---"
+          echo "$RESULT" | jq -r '.StandardOutputContent'
+          echo "--- STDERR ---"
+          echo "$RESULT" | jq -r '.StandardErrorContent'
+
+          if [ "$STATUS" != "Success" ]; then
+            echo "::error::SSM command failed with status: $STATUS"
+            exit 1
+          fi
