@@ -153,7 +153,7 @@ jobs:
               \"docker compose up -d beszel caddy\",
               \"for i in {1..5}; do if [ -f /var/lib/docker/volumes/infra_beszel_data/_data/id_ed25519 ]; then break; fi; sleep 1; done\",
               \"# Dynamically extract public key and write to local .env on the host\",
-              \"if [ -f /var/lib/docker/volumes/infra_beszel_data/_data/id_ed25519 ]; then BESZEL_KEY=\\\$(ssh-keygen -y -f /var/lib/docker/volumes/infra_beszel_data/_data/id_ed25519) && echo \\\"BESZEL_KEY=\\\$BESZEL_KEY\\\" > /home/ubuntu/infra/.env; fi\",
+              \"if [ -f /var/lib/docker/volumes/infra_beszel_data/_data/id_ed25519 ]; then BESZEL_KEY=\\\$(ssh-keygen -y -f /var/lib/docker/volumes/infra_beszel_data/_data/id_ed25519) && touch /home/ubuntu/infra/.env && sed -i '/^BESZEL_KEY=/d' /home/ubuntu/infra/.env && echo \\\"BESZEL_KEY=\\\$BESZEL_KEY\\\" >> /home/ubuntu/infra/.env; fi\",
               \"docker compose up -d\",
               \"docker compose restart caddy\",
               \"docker image prune -af\",
