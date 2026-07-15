@@ -69,7 +69,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       LISTEN: /beszel_socket/beszel.sock
-      KEY: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILia8oFV9j0wiuO9JCen4XcfeezcxRglEvGjShkw8MQk"
+      KEY: "${BESZEL_KEY}"
     logging:
       driver: "json-file"
       options:
