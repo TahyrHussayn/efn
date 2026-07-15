@@ -150,6 +150,7 @@ jobs:
               \"cd /home/ubuntu/infra\",
               \"docker compose pull app\",
               \"docker compose up -d\",
+              \"docker compose restart caddy\",
               \"docker image prune -af\",
               \"echo \\\"Waiting for app to report healthy...\\\"\",
               \"for i in {1..12}; do if docker compose ps app | grep -q \\\"(healthy)\\\"; then echo \\\"App is healthy!\\\" && exit 0; fi; echo \\\"Waiting...\\\" && sleep 5; done\",
