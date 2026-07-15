@@ -23,3 +23,12 @@ next-env.d.ts
 
 # vercel
 .vercel
+
+# terraform
+.terraform/
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+.terraform.lock.hcl
+**/.terraform.lock.hcl

@@ -20,68 +20,39 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000) to view the app.
 
-## Deployment
+## Zero-Variables Automated Deployment
 
-Push to `main` → GitHub Actions builds the Docker image → pushes to GHCR → deploys to EC2 via AWS SSM.
+All infrastructure and deployments are 100% automated via Terraform and GitHub Actions. There are **no manual variable settings** required on GitHub.
 
-### Infrastructure
-
-| Component | Detail |
-| --- | --- |
-| **Compute** | EC2 t3.medium, Ubuntu 24.04 |
-| **Reverse Proxy** | Caddy (auto TLS via Cloudflare DNS challenge) |
-| **Container Registry** | GitHub Container Registry (ghcr.io) |
-| **CI/CD** | GitHub Actions (OIDC → SSM, no static keys) |
-| **DNS** | Cloudflare (proxied, Full Strict) |
-
-### EC2 Setup
-
-1. Spin up your Ubuntu 24.04 EC2 instance.
-2. Ensure the AWS Systems Manager (SSM) Agent is running (pre-installed by default on Ubuntu AMIs).
-3. Configure the OIDC Trust Policy in AWS IAM.
-4. That's it! GitHub Actions will automatically install Docker, write the configs/certs, and start the app on your first push.
-
-### GitHub Repository Secrets
-
-Configure these in **Settings → Secrets and variables → Actions → Secrets**:
-
-| Secret | Description |
-| --- | --- |
-| `CLOUDFLARE_CERT` | The PEM text block of your Cloudflare Origin Certificate |
-| `CLOUDFLARE_KEY` | The Private Key text block of your Cloudflare Origin Certificate |
-
-### GitHub Repository Variables
-
-Configure these in **Settings → Secrets and variables → Actions → Variables**:
-
-| Variable | Value |
-| --- | --- |
-| `AWS_ROLE_ARN` | `arn:aws:iam::<account>:role/<role-name>` |
-| `AWS_REGION` | e.g. `ap-south-1` |
-| `EC2_INSTANCE_ID` | e.g. `i-0abc123def456` |
-
-## Project Structure
-
+### 1. Provision AWS Infrastructure
+Run this locally from the project root:
+```bash
+cd terraform
+terraform init
+terraform apply
 ```
-src/app/                    # Next.js app
-  ├── globals.css
-  ├── layout.tsx
-  └── page.tsx
-infra/                      # EC2 deployment folder
-  ├── docker-compose.yml
-  ├── Caddyfile
-  └── certs/                # Mount folder for Cloudflare Origin Certs (gitignored)
-.github/workflows/
-  └── deploy.yml            # CI/CD pipeline
-Dockerfile                  # Next.js production image
-```
+This builds your EC2 server, static Elastic IP, OIDC trust provider, and SSM roles.
 
-## Scripts
+### 2. Configure Cloudflare DNS & SSL
+*   Point an **A record** for `efn.tahyrhussayn.online` to the `elastic_ip` output printed by Terraform (proxied, orange cloud).
+*   Go to **SSL/TLS → Origin Server → Create Certificate**.
+*   Save the certificate PEM and private key PEM.
+*   Set SSL mode to **Full (Strict)**.
 
-| Command | Description |
+### 3. Save Cloudflare Certs to GitHub
+Go to GitHub Repository Settings → **Secrets and variables → Actions → Secrets** (New repository secret):
+
+| Secret Name | Value |
 | --- | --- |
-| `pnpm dev` | Start development server |
-| `pnpm build` | Create production build |
-| `pnpm start` | Run production server |
-| `pnpm lint` | Lint with Biome |
-| `pnpm format` | Format with Biome |
+| `CLOUDFLARE_CERT` | Your Cloudflare Origin Certificate PEM block |
+| `CLOUDFLARE_KEY` | Your Cloudflare Private Key PEM block |
+
+*(Note: There is **no need** to set any Repository Variables like region, roles, or instance IDs. The pipeline resolves them dynamically!)*
+
+### 4. Push to Main
+```bash
+git add .
+git commit -m "Initialize Zero-Variables Deployment"
+git push origin main
+```
+The pipeline will automatically lint your code, build the standalone Docker image, push it to GHCR, install Docker on the server (if missing), write Caddy proxy configurations and SSL certs, and start the app.

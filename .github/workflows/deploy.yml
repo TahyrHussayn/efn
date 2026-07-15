@@ -102,8 +102,25 @@ jobs:
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v6.2.2
         with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
+          role-to-assume: arn:aws:iam::173322644048:role/efn-github-deploy-role
+          aws-region: us-east-1
+
+      - name: Resolve EC2 Instance ID by tag
+        id: ec2_resolve
+        run: |
+          # Query running instance tagged Name=efn-server
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=efn-server" "Name=instance-state-name,Values=running" \
+            --query "Reservations[0].Instances[0].InstanceId" \
+            --output text)
+          
+          if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" = "None" ]; then
+            echo "::error::Could not find running EC2 instance with tag Name=efn-server"
+            exit 1
+          fi
+          
+          echo "Discovered Instance ID: $INSTANCE_ID"
+          echo "EC2_INSTANCE_ID=$INSTANCE_ID" >> $GITHUB_ENV
 
       - name: Prepare configs and certs (Base64)
         id: prep
@@ -118,7 +135,7 @@ jobs:
         run: |
           # The script automatically installs Docker if missing, creates directories, writes configs/certs, and boots
           COMMAND_ID=$(aws ssm send-command \
-            --instance-ids "${{ vars.EC2_INSTANCE_ID }}" \
+            --instance-ids "${{ env.EC2_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
             --parameters "commands=[
               \"if ! command -v docker &> /dev/null; then echo \\\"Docker not found. Installing Docker...\\\" && export DEBIAN_FRONTEND=noninteractive && apt-get update && apt-get install -y curl && curl -fsSL https://get.docker.com | sh; fi\",
@@ -143,13 +160,13 @@ jobs:
           # Wait for the command to complete (up to 120s)
           aws ssm wait command-executed \
             --command-id "$COMMAND_ID" \
-            --instance-id "${{ vars.EC2_INSTANCE_ID }}" \
+            --instance-id "${{ env.EC2_INSTANCE_ID }}" \
             || true
 
           # Fetch and display result
           RESULT=$(aws ssm get-command-invocation \
             --command-id "$COMMAND_ID" \
-            --instance-id "${{ vars.EC2_INSTANCE_ID }}")
+            --instance-id "${{ env.EC2_INSTANCE_ID }}")
 
           STATUS=$(echo "$RESULT" | jq -r '.Status')
           echo "Command status: $STATUS"
