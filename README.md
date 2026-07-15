@@ -63,7 +63,7 @@ The pipeline will automatically lint your code, build the standalone Docker imag
 
 A system-wide **Netdata** monitoring panel is deployed directly inside the container stack.
 
-*   **URL:** `https://monitor.efn.tahyrhussayn.online`
+*   **URL:** `https://efn.tahyrhussayn.online/monitor/`
 *   **Username:** `tahirhussain5112`
 *   **Password:** `tahirthegoat`
 
