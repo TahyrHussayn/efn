@@ -16,14 +16,10 @@ efn.tahyrhussayn.online {
 		Referrer-Policy "strict-origin-when-cross-origin"
 	}
 
-	# Redirect /monitor to /monitor/ to prevent 404s
-	redir /monitor /monitor/
-
-	# Secure the monitoring path
-	handle_path /monitor/* {
-		reverse_proxy beszel:8090
-	}
-
 	reverse_proxy app:3000
 	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key
+}
+
+monitor.tahyrhussayn.online {
+	reverse_proxy beszel:8090
 }

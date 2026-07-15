@@ -63,7 +63,7 @@ The pipeline will automatically lint your code, build the standalone Docker imag
 
 A system-wide **Beszel** monitoring panel is deployed directly inside the container stack.
 
-*   **URL:** `https://efn.tahyrhussayn.online/monitor/`
+*   **URL:** `https://monitor.tahyrhussayn.online`
 
 On your first visit, you will be prompted to create your admin username and password. 
 
