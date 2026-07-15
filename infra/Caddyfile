@@ -16,6 +16,9 @@ efn.tahyrhussayn.online {
 		Referrer-Policy "strict-origin-when-cross-origin"
 	}
 
+	# Redirect /monitor to /monitor/ to prevent 404s
+	redir /monitor /monitor/
+
 	# Secure the monitoring path
 	handle_path /monitor/* {
 		basic_auth {
