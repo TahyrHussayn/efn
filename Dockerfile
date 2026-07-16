@@ -4,16 +4,14 @@
 # Stage 1 — Base: shared Alpine + libc6-compat
 # ──────────────────────────────────────────────
 FROM node:22-alpine AS base
-RUN apk add --no-cache libc6-compat
+RUN apk add --no-cache libc6-compat && \
+    npm install -g pnpm@11
 WORKDIR /app
 
 # ──────────────────────────────────────────────
 # Stage 2 — Dependencies: install with pnpm
 # ──────────────────────────────────────────────
 FROM base AS deps
-
-# Install pnpm directly (corepack is being removed from Node 25+)
-RUN npm install -g pnpm@11
 
 # Copy only the files pnpm needs to resolve + install
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -27,10 +25,6 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
 # Stage 3 — Builder: build the Next.js app
 # ──────────────────────────────────────────────
 FROM base AS builder
-
-# Reuse pnpm from deps stage instead of re-installing
-COPY --from=deps /usr/local/lib/node_modules/pnpm /usr/local/lib/node_modules/pnpm
-RUN ln -s /usr/local/lib/node_modules/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
