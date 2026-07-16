@@ -1,4 +1,15 @@
 # ─────────────────────────────────────────────────────────────────────────────
+# Common tags applied to all resources
+# ─────────────────────────────────────────────────────────────────────────────
+locals {
+  common_tags = {
+    Project     = "efn"
+    ManagedBy   = "terraform"
+    Environment = "production"
+  }
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Ubuntu 24.04 LTS AMI (always latest patched version)
 # ─────────────────────────────────────────────────────────────────────────────
 data "aws_ami" "ubuntu" {
@@ -47,9 +58,7 @@ resource "aws_security_group" "efn" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
-    Name = "efn-sg"
-  }
+  tags = merge(local.common_tags, { Name = "efn-sg" })
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -90,10 +99,13 @@ resource "aws_instance" "efn" {
   root_block_device {
     volume_size = 20
     volume_type = "gp3"
+    encrypted   = true
   }
 
-  tags = {
-    Name = "efn-server"
+  tags = merge(local.common_tags, { Name = "efn-server" })
+
+  lifecycle {
+    prevent_destroy = true
   }
 }
 
@@ -103,8 +115,10 @@ resource "aws_instance" "efn" {
 resource "aws_eip" "efn" {
   instance = aws_instance.efn.id
 
-  tags = {
-    Name = "efn-eip"
+  tags = merge(local.common_tags, { Name = "efn-eip" })
+
+  lifecycle {
+    prevent_destroy = true
   }
 }
 
@@ -141,7 +155,6 @@ resource "aws_iam_role" "github_actions" {
   })
 }
 
-# Attached permissions now allow GitHub Actions to dynamically query EC2 instances (ec2:DescribeInstances)
 resource "aws_iam_role_policy" "github_actions_ssm" {
   name = "efn-ssm-deploy-policy"
   role = aws_iam_role.github_actions.id
@@ -150,16 +163,24 @@ resource "aws_iam_role_policy" "github_actions_ssm" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "AllowSSMCommandOnEfnOnly"
         Effect = "Allow"
-        Action = [
-          "ssm:SendCommand",
-          "ec2:DescribeInstances"
+        Action = ["ssm:SendCommand"]
+        Resource = [
+          aws_instance.efn.arn,
+          "arn:aws:ssm:${var.aws_region}::document/AWS-RunShellScript"
         ]
+      },
+      {
+        Sid      = "AllowSSMReadResults"
+        Effect   = "Allow"
+        Action   = ["ssm:GetCommandInvocation", "ssm:ListCommandInvocations"]
         Resource = "*"
       },
       {
+        Sid      = "AllowEC2Describe"
         Effect   = "Allow"
-        Action   = ["ssm:GetCommandInvocation", "ssm:ListCommandInvocations"]
+        Action   = ["ec2:DescribeInstances"]
         Resource = "*"
       }
     ]
