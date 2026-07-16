@@ -14,12 +14,11 @@ efn.tahyrhussayn.online {
 		X-Content-Type-Options "nosniff"
 		# Referrer policy
 		Referrer-Policy "strict-origin-when-cross-origin"
+		# Content Security Policy
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'"
 	}
 
 	reverse_proxy app:3000
 	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key
 }
 
-monitor-efn.tahyrhussayn.online {
-	reverse_proxy beszel:8090
-}

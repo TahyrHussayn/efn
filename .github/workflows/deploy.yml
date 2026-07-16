@@ -38,6 +38,17 @@ jobs:
         with:
           version: 11
 
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        run: echo "dir=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.dir }}
+          key: pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -52,7 +63,7 @@ jobs:
   # ─────────────────────────────────────────────
   build:
     runs-on: ubuntu-latest
-    needs: lint
+    needs: []
 
     outputs:
       image-tag: ${{ steps.meta.outputs.tags }}
@@ -96,7 +107,11 @@ jobs:
   # ─────────────────────────────────────────────
   deploy:
     runs-on: ubuntu-latest
-    needs: build
+    needs: [lint, build]
+
+    environment:
+      name: production
+      url: https://efn.tahyrhussayn.online
 
     steps:
       - name: Checkout
@@ -149,11 +164,6 @@ jobs:
               \"echo '${{ env.KEY_B64 }}' | base64 -d > /home/ubuntu/infra/certs/origin.key\",
               \"cd /home/ubuntu/infra\",
               \"docker compose pull app\",
-              \"# Boot Hub first so it generates the SSH key pair on first install\",
-              \"docker compose up -d beszel caddy\",
-              \"for i in {1..5}; do if [ -f /var/lib/docker/volumes/infra_beszel_data/_data/id_ed25519 ]; then break; fi; sleep 1; done\",
-              \"# Dynamically extract public key and write to local .env on the host\",
-              \"if [ -f /var/lib/docker/volumes/infra_beszel_data/_data/id_ed25519 ]; then BESZEL_KEY=\$(ssh-keygen -y -f /var/lib/docker/volumes/infra_beszel_data/_data/id_ed25519) && touch /home/ubuntu/infra/.env && sed -i '/^BESZEL_KEY=/d' /home/ubuntu/infra/.env && echo \\\"BESZEL_KEY=\$BESZEL_KEY\\\" >> /home/ubuntu/infra/.env; fi\",
               \"docker compose up -d\",
               \"docker compose restart caddy\",
               \"docker image prune -af\",
@@ -187,4 +197,16 @@ jobs:
           if [ "$STATUS" != "Success" ]; then
             echo "::error::SSM command failed with status: $STATUS"
             exit 1
+          fi
+
+      - name: Smoke test (external reachability)
+        run: |
+          echo "Waiting 10s for Caddy to pick up the new container..."
+          sleep 10
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" https://efn.tahyrhussayn.online || true)
+          echo "HTTP status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "::warning::Smoke test returned $STATUS (expected 200). The site may still be starting up."
+          else
+            echo "Smoke test passed!"
           fi

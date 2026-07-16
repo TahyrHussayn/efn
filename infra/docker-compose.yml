@@ -9,6 +9,14 @@ services:
       - NODE_ENV=production
       - HOSTNAME=0.0.0.0
       - PORT=3000
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    labels:
+      - "deploy.image=ghcr.io/tahyrhussayn/efn:latest"
     logging:
       driver: "json-file"
       options:
@@ -44,43 +52,11 @@ services:
     networks:
       - web
 
-  # ── Beszel Hub: Web Dashboard (modern, Vercel-style UI) ──
-  beszel:
-    image: henrygd/beszel:latest
-    restart: unless-stopped
-    volumes:
-      - beszel_data:/beszel_data
-      - beszel_socket:/beszel_socket
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    networks:
-      - web
 
-  # ── Beszel Agent: Local metrics collector ──
-  beszel-agent:
-    image: henrygd/beszel-agent:latest
-    restart: unless-stopped
-    network_mode: host
-    volumes:
-      - beszel_socket:/beszel_socket
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    environment:
-      LISTEN: /beszel_socket/beszel.sock
-      KEY: "${BESZEL_KEY}"
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
 
 volumes:
   caddy_data:
   caddy_config:
-  beszel_data:
-  beszel_socket:
 
 networks:
   web:

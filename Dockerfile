@@ -13,7 +13,7 @@ WORKDIR /app
 FROM base AS deps
 
 # Install pnpm directly (corepack is being removed from Node 25+)
-RUN npm install -g pnpm
+RUN npm install -g pnpm@11
 
 # Copy only the files pnpm needs to resolve + install
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -28,6 +28,10 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
 # ──────────────────────────────────────────────
 FROM base AS builder
 
+# Reuse pnpm from deps stage instead of re-installing
+COPY --from=deps /usr/local/lib/node_modules/pnpm /usr/local/lib/node_modules/pnpm
+RUN ln -s /usr/local/lib/node_modules/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
@@ -35,7 +39,7 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN --mount=type=cache,target=/app/.next/cache \
-    npm install -g pnpm && pnpm run build
+    pnpm run build
 
 # ──────────────────────────────────────────────
 # Stage 4 — Runner: minimal production image
@@ -44,6 +48,10 @@ FROM base AS runner
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+
+LABEL org.opencontainers.image.source="https://github.com/TahyrHussayn/efn"
+LABEL org.opencontainers.image.description="EFN — Next.js standalone production image"
+LABEL org.opencontainers.image.licenses="UNLICENSED"
 
 # Create a non-root user for security
 RUN addgroup --system --gid 1001 nodejs && \
